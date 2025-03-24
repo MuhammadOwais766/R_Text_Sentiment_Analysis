@@ -96,7 +96,7 @@ hamlet %>% unnest_tokens(word, text) %>%
 library(gutenbergr)
 
 
-Omar <- gutenberg_download(1787)
+Omar <- gutenberg_download(38511)
 Omar
 
 Omar <- Omar %>% 
@@ -105,8 +105,16 @@ Omar <- Omar %>%
 
 counts <- Omar %>% 
   count(word, sort=TRUE) %>%
-  filter(n > 75)
+  filter(n > 50)
 
 counts <- counts %>% mutate(word = reorder(word, n))
 
 counts %>% ggplot(aes(n, word)) + geom_col() + labs(y=NULL)
+
+
+# SENTIMENT ANALYSIS
+
+
+sentiments <- get_sentiments("nrc")
+sentiments
+

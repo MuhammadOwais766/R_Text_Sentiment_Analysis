@@ -1,0 +1,217 @@
+---
+title: "Text Sentiment Analysis"
+author: "Owais"
+date: "2025-03-24"
+output: html_document
+---
+
+# Introduction
+
+Sentiment analysis is the process of analyzing digital text to determine if the emotional tone of the message is positive, negative, or neutral. This project will showcase sentiment analysis performed in R. The purpose of the project is to gain a better and deeper insight into how sentiment analysis works.
+
+## Installing Packages
+
+First and most importantly, the relevant packages need to be installed as shown below.
+
+```{r warning=FALSE}
+#install.packages("tidyverse")
+#install.packages("tidytext")
+#install.packages("ggraph")
+#install.packages("igraph")
+#install.packages("wordcloud")
+#install.packages("textdata")
+#install.packages("gutenbergr")
+
+```
+
+But what is the purpose of these packages? Let's find out.
+
+> Tidyverse : A collection of R packages designed for data science and data manipulation. Used for Cleaning, transforming, and visualizing data in a consistent and efficient way.
+
+> Tidytext : Provides tools for text mining and text analysis in a tidy format. Breaking text into individual words (tokenization) and performing sentiment analysis.
+
+> ggraph : An extension of ggplot2 for creating network graphs and other relational data visualizations. Creating a graph to show connections between characters in a novel.
+
+> igraph : A package for creating and analyzing network graphs, e.g., social networks, word co-occurrence networks. Visualizing how often words appear together in a text.
+
+> wordcloud : Generates word clouds, which are visual representations of word frequency in a text. Visualizing the most frequent words in a document or corpus.
+
+> textdata : Provides access to text datasets and lexicons for text analysis. Useful for sentiment analysis, as it includes lexicons like AFINN, bing, and nrc. Loading sentiment lexicons to analyze the emotional tone of text.
+
+> gutenbergr : Provides access to the Project Gutenberg collection of over 60,000 free eBooks. Downloading and analyzing works like Pride and Prejudice or Moby Dick.
+
+## Loading Libraries
+
+Now, it is time to load the libraries.
+
+```{r warning=FALSE}
+library(tidyverse)
+library(tidytext)
+library(ggraph)
+library(igraph)
+library(textdata)
+library(gutenbergr)
+library(wordcloud)
+```
+
+# TOKENIZATION
+
+
+As explained earlier, tokenizing is breaking text into individual words for further analysis and to find out insights within the data. Let's start by analyzing some famous lines from Hamlet’s famous soliloquy.
+
+```{r warning=FALSE}
+text = c("To be, or not to be--that is the question:",
+         "Whether 'tis nobler in the mind to suffer",
+         "The slings and arrows of outrageous fortune",
+         "Or to take arms against a sea of troubles",
+         "And by opposing end them.")
+```
+
+Our next step is to convert this vector into a tibble. We want the tibble to have two columns:
+
+1. *line* will hold the line number. There are five lines, so this will be the count from 1 to 5.
+
+2. *text* will hold each line of text.
+
+```{r warning=FALSE}
+text <- tibble(line=1:5, text=text)
+text
+```
+
+Now it is time to rearrange this tibble into a tidy text format. Tidy data is data where:
+
+1. every variable has its own column.
+2. every observation has its own row.
+3. each value must have its own cell.
+
+So what is the “observation” when analyzing text? In tidy text, an observation is referred to as a “token”. A token is the smallest unit of text that you want to analyze. For example, a token could be individual letters, individual words, combination of neighboring words (n-grams), individual lines or individual paragraphs.The token is the smallest unit of text that you need to use for your analysis, i.e. the atomic unit. It is up to the user to decide what the appropriate token type is for your analysis. For example, if we were counting the number of times each word appeared in the text, then the token would be a word. If we were analyzing average line lengths, then the token would be a line.
+
+For this analysis, the token, or observation, is a word. Each observation must have its own row, meaning that the tibble needs to be transformed so that there is one word per row. But what about the first rule that every variable has its own column? What are the variables for this text? There are two variables, The line number, which is in the column *line* and The actual token (word), which will be put in a column called *word*.
+
+Therefore the tibble needs to be transformed so that there are two columns, *line* and *word*. Each word should be on a separate row. This could be done manually, fortunately however, the *tidytext* library supplies the function *unnest_tokens*, which can automatically do this.
+
+```{r warning=FALSE}
+tokens <- text %>% unnest_tokens(word, text)
+tokens
+```
+
+By default *unnest_tokens* will tokenize by words. This can be changed by passing different options to the function. The first argument is the name of the column in which to place the tokens, while the second argument is the name of the column that contains the text to tokenize.
+
+Note that *unnest_tokens* has automatically lower-cased the words and removed punctuation. Now that the text is tidy, it is easy to count the number of occurrences of each word. This can be done using the 'count' function from tidyverse's *dplyr* package. Pass *sort = TRUE* so that the resulting tibble is sorted with the most common words at the top.
+
+```{r warning=FALSE}
+tokens %>% count(word, sort=TRUE)
+```
+
+### Reading Text from a file
+
+Tidying the text makes all subsequent analysis significantly easier. But before the text can be tidied, it has to be loaded into R. Typing it out into a vector, as done previously, would not be practical for large amounts of text. Fortunately R comes with many functions to read text from files. The *readLines* function from core R reads text from a file into a vector of lines.
+
+```{r warning=FALSE}
+lines <- readLines("https://chryswoods.com/text_analysis_r/hamlet.txt")
+lines
+```
+
+Now to convert this into a tibble. One column, called *line*, will have the line number (from 1 to length(lines)), while the lines themselves will be placed into the column called *text*.
+
+```{r warning=FALSE}
+hamlet <- tibble(line=1:length(lines), text=lines)
+hamlet
+```
+
+Now tokenize the text using *unnest_tokens* again, and then count the numbers.
+
+```{r warning=FALSE}
+hamlet_tokens <- hamlet %>% unnest_tokens(word, text)
+hamlet_tokens %>% count(word, sort=TRUE)
+```
+
+Analysis is made difficult because the text contains lots of short words, like “the”, “of” and “and”, which form the scaffolding of the sentences without necessarily containing meaning in and of themselves. These words, which are often called “stop words”, are sometimes not needed for textual analysis, and should be removed. Fortunately the *tidytext* library provides a data set of English stop words.
+
+```{r warning=FALSE}
+data(stop_words)
+stop_words
+```
+
+These stop words can be removed from *hamlet_tokens* by performing an anti-join between *hamlet_tokens* and *stop_words*. An anti-join combines two tibbles, returning only the rows in the first tibble that are NOT in the second tibble. Now to use the *anti_join* function that is part of *dplyr*.
+
+```{r warning=FALSE}
+important_hamlet_tokens <- hamlet_tokens %>% anti_join(stop_words)
+important_hamlet_tokens
+```
+
+Now, when the words are counted, only the meaningful words are shown.
+
+```{r warning=FALSE}
+important_hamlet_tokens %>% count(word, sort=TRUE)
+```
+
+The top words, “sleep”, “death”, “die”, “life”, are a good insight into the meaning behind this speech.
+
+All of the above steps can be combined into a single pipeline.
+
+```{r warning=FALSE}
+hamlet %>% unnest_tokens(word, text) %>%
+  anti_join(stop_words) %>%
+  count(word, sort=TRUE)
+```
+
+### Downloading Text
+
+To do more text analysis we need to find some larger texts. Fortunately, the *gutenbergr* package makes it easy to download books from *Project Gutenberg*.
+
+Lets start by downloading **The Sufistic Quatrains of Omar Khayyam**. The Gutenberg ID of this book is **38511**.
+
+```{r warning=FALSE}
+Omar <- gutenberg_download(38511)
+Omar
+```
+
+Now to perform the same analysis as before, mainly  tokenizing by word, removing stop words, and then counting words to find the most common ones.
+
+```{r warning=FALSE}
+Omar <- Omar %>% 
+  unnest_tokens(word, text) %>%
+  anti_join(stop_words)
+```
+
+Let's now narrow down the words using *filter* function from dplyr to show words that appear more than 50 times.
+
+```{r warning=FALSE}
+counts <- Omar %>% 
+  count(word, sort=TRUE) %>%
+  filter(n > 50)
+
+counts
+```
+
+In order to plot this data, the words need to be converted into factors using the R *reorder* function. This will order the factors according to the number of occurrences of each word. As the tibble is being changed, The dplyr function *mutate* will be used to edit the column in place.
+
+```{r warning=FALSE}
+counts <- counts %>% mutate(word = reorder(word, n))
+```
+
+The data is now ready to be plotted as a bar graph. This can be done by utilizing *ggplot* using the aesthetic of placing the number of occurrences on the x axis, the word on the y axis, using a *geom_col()* column plot, and not adding a label on the y-axis.
+
+```{r warning=FALSE}
+counts %>% ggplot(aes(n, word)) + geom_col() + labs(y=NULL)
+```
+
+
+# SENTIMENT ANALYSIS
+
+Sentiment analysis involves trying to analyse the feelings or sentiments expressed within a piece of text. Sentiments could be interpreted broadly, e.g. with words being classed as “positive” or “negative”, or more nuance could be included, e.g. with words classed as expressing “joy”, “fear”, “sadness” etc.
+
+Sentiment analysis depends on building a dictionary of words and classifying those words according to sentiment. Several such dictionaries have been created, typically via crowd-sourcing or other large-scale analysis. The *tidytext* library provides the *get_sentiments* function. This can be used to download one of many different sentiments dictionaries into a tibble.
+
+Amongst others, tidytext provides access to three general purpose sentiments dictionaries:
+
+1. **AFINN** from **Finn Årup Nielsen**.
+2. **bing** from **Bing Liu** and **collaborators**
+3. **nrc** from **Saif Mohammad** and **Peter Turney**.
+
+```{r warning=FALSE}
+sentiments <- get_sentiments("nrc")
+sentiments
+```
+
