@@ -118,6 +118,8 @@ counts %>% ggplot(aes(n, word)) + geom_col() + labs(y=NULL)
 sentiments <- get_sentiments("nrc")
 sentiments
 
+sentiments %>% count(sentiment)
+
 hound <- gutenberg_download(2852)%>%
   unnest_tokens(word, text) %>%
   anti_join(stop_words)
@@ -126,3 +128,52 @@ hound
 
 hound_sentiment <- hound %>% inner_join(sentiments)
 hound_sentiment
+
+hound_sentiment %>% 
+  filter(sentiment=="positive") %>%
+  count(word, sort=TRUE)
+
+
+hound_sentiment %>%
+  filter(sentiment=="joy") %>%
+  count(word) %>% 
+  summarise(total=sum(n))
+
+hound_sentiment %>% count(sentiment)
+
+hound_sentiment %>%
+  count(sentiment) %>%
+  mutate(sentiment = reorder(sentiment, n)) %>%
+  ggplot(aes(n, sentiment)) + geom_col() + labs(y=NULL)
+
+hound <- gutenberg_download(2852) %>% 
+  mutate(linenumber=row_number()) %>% 
+  unnest_tokens(word, text) %>% anti_join(stop_words)
+
+hound
+
+hound_sentiments <- hound %>% 
+  inner_join(sentiments)
+
+hound_sentiments
+
+hound_blocks <- hound_sentiments %>% 
+  count(block=linenumber%/%50, sentiment)
+
+hound_blocks
+
+hound_blocks <- hound_blocks %>% 
+  pivot_wider(names_from = sentiment, 
+              values_from = n, 
+              values_fill = 0)
+
+hound_blocks
+
+hound_blocks <- hound_blocks %>% 
+  mutate(sentiment = positive - negative)
+
+hound_blocks
+
+hound_blocks %>% ggplot(aes(block, sentiment)) + geom_col()
+
+hound_blocks %>% ggplot(aes(block, joy)) + geom_col()

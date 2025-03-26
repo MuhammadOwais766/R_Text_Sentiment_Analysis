@@ -225,7 +225,7 @@ sentiments %>% count(sentiment)
 
 ## Matching sentiments to words
 
-Sentiment analysis can be performed by attaching a sentiment to every word in a block of text. For example, let’s recreate the tidy text tibble of all of the non-stopwords in Another Adventures of Sherlock Holmes, The Hound of the Baskervilles.
+Sentiment analysis can be performed by attaching a sentiment to every word in a block of text. For example, let’s recreate the tidy text tibble of all of the non-stopwords in **Another Adventures of Sherlock Holmes, The Hound of the Baskervilles**.
 
 ```{r}
 hound <- gutenberg_download(2852)%>%
@@ -277,4 +277,68 @@ hound_sentiment %>%
 ```
 
 ## Investigating change of sentiment through a text
+
+Sentiment analysis can also be used to investigate how sentiment change throughout a text. To do this, first add a line number to each word in the text. This can be done my mutating the tibble downloaded from Project Gutenberg and adding a *linenumber* column which is just the row number in the tibble, obtained via the row_number function.
+
+```{r warning=FALSE}
+hound <- gutenberg_download(2852) %>% 
+              mutate(linenumber=row_number()) %>% 
+              unnest_tokens(word, text) %>% anti_join(stop_words)
+
+hound
+```
+
+Now to add in the sentiments.
+
+```{r warning=FALSE}
+hound_sentiments <- hound %>% 
+  inner_join(sentiments)
+
+hound_sentiments
+```
+
+Our purpose here is to count the number of words with different sentiments for differnet blocks of the text. One way to do this is to divide the text up into blocks of multiple lines. The number of sentiments in each block can be counted, and then can be tracked on how this count changes from block to block in the text. Note that the choice of block size of 50 lines is random. It is best to experiment with different block sizes to see which number works best.
+
+The block can be divided using *linenumber %/% 50* which will modulo divide each line number by 50. Thus lines 0-49 will be assigned to block 0, lines 50 to 99 to block 1 and so on.
+
+```{r warning=FALSE}
+hound_blocks <- hound_sentiments %>% 
+  count(block=linenumber%/%50, sentiment)
+
+hound_blocks
+```
+
+Next to pivot the tibble so that the sentiments are the columns, and we have one row per block of text. This is done using **pivot_wider** function from **tidyr** package. In this case, we want to pivot the tibble so that the names of the new columns come from the text values in the current “sentiment” column, and the values in those columns come from the current “n” column (which contains the number of words of each sentiment). It may be that some sentiments don’t appear in a block, so we need to ensure that any missing sentiments are filled in with a default value of 0.
+
+```{r warning=FALSE}
+hound_blocks <- hound_blocks %>% 
+  pivot_wider(names_from = sentiment, 
+              values_from = n, 
+              values_fill = 0)
+
+hound_blocks
+```
+
+Now to perform calculations of the difference between the number of positive and negative sentiments in each block, which could be placed into a new column called “sentiment".
+
+```{r warning=FALSE}
+hound_blocks <- hound_blocks %>% 
+  mutate(sentiment = positive - negative)
+
+hound_blocks
+```
+
+This can be visually represented, with the “sentiment” column on the y axis, and the block number on the x axis.
+
+```{r warning=FALSE}
+hound_blocks %>% ggplot(aes(block, sentiment)) + geom_col()
+```
+
+This shows that **Another Adventures of Sherlock Holmes, The Hound of the Baskervilles** was more positive at the beginning, but had more periods of negativity as the text progressed.
+
+The trajectory of specific sentiments can also be visualized.
+
+```{r warning=FALSE}
+hound_blocks %>% ggplot(aes(block, joy)) + geom_col()
+```
 
