@@ -118,3 +118,11 @@ counts %>% ggplot(aes(n, word)) + geom_col() + labs(y=NULL)
 sentiments <- get_sentiments("nrc")
 sentiments
 
+hound <- gutenberg_download(2852)%>%
+  unnest_tokens(word, text) %>%
+  anti_join(stop_words)
+
+hound
+
+hound_sentiment <- hound %>% inner_join(sentiments)
+hound_sentiment

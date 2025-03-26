@@ -215,3 +215,66 @@ sentiments <- get_sentiments("nrc")
 sentiments
 ```
 
+Choosing to follow these words for the sentiment analysis may not return accurate results. For example, badly is classified as **negative** and **sadness**, but in the sentence **I want that car badly.**, 'badly' is not necessarily negative or sadness. Also, some of these dictionaries of words are distributed under licenses (e.g. citation, payment etc), so that will also need to be accounted for if the user wishes to avail the services of these dictionaries.
+
+Different dictionaries will use different sentiments, and will classify them in different ways. For *nrc* the sentiments are in the sentiments column.Tthe full list of sentiments and the number of words can be accessed and classified to each one via the *count* function.
+
+```{r warning=FALSE}
+sentiments %>% count(sentiment)
+```
+
+## Matching sentiments to words
+
+Sentiment analysis can be performed by attaching a sentiment to every word in a block of text. For example, let’s recreate the tidy text tibble of all of the non-stopwords in Another Adventures of Sherlock Holmes, The Hound of the Baskervilles.
+
+```{r}
+hound <- gutenberg_download(2852)%>%
+  unnest_tokens(word, text) %>%
+  anti_join(stop_words)
+
+hound
+```
+
+Each word can be classified depending on its sentiment by joining together the *hound* tibble with the dictionary of sentiments in *sentiments*. This can be done using dplyr's *inner_join* function. This will join together two tibbles via their common column (in this case, word), creating new rows as needed if a word appears twice.
+
+```{r warning=FALSE}
+hound_sentiment <- hound %>% inner_join(sentiments)
+hound_sentiment
+```
+
+Observe how there is now a **sentiment** column added that shows repeated words which have multiple sentiments, e.g, "adventure" being classified as both "anticipation" and "positive".
+
+Now to count how many words of different sentiments there are using *filter* and *count*.
+
+```{r warning=FALSE}
+hound_sentiment %>% 
+  filter(sentiment=="positive") %>%
+  count(word, sort=TRUE)
+```
+
+Now to get the total number of words of each type.
+
+```{r warning=FALSE}
+hound_sentiment %>%
+  filter(sentiment=="joy") %>%
+  count(word) %>% 
+  summarise(total=sum(n))
+```
+
+Alternatively, the number of occurrences of each sentiment in the sentiments column can just be counted.
+
+```{r warning=FALSE}
+hound_sentiment %>% count(sentiment)
+```
+
+Now to plot our findings.
+
+```{r warning=FALSE}
+hound_sentiment %>%
+  count(sentiment) %>%
+  mutate(sentiment = reorder(sentiment, n)) %>%
+  ggplot(aes(n, sentiment)) + geom_col() + labs(y=NULL)
+```
+
+## Investigating change of sentiment through a text
+
