@@ -5,6 +5,8 @@ date: "2025-03-24"
 output: html_document
 ---
 
+SOURCE CODE FOUND AT : https://chryswoods.com/text_analysis_r/
+
 # Introduction
 
 Sentiment analysis is the process of analyzing digital text to determine if the emotional tone of the message is positive, negative, or neutral. This project will showcase sentiment analysis performed in R. The purpose of the project is to gain a better and deeper insight into how sentiment analysis works.
