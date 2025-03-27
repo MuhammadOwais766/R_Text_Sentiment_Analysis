@@ -177,3 +177,7 @@ hound_blocks
 hound_blocks %>% ggplot(aes(block, sentiment)) + geom_col()
 
 hound_blocks %>% ggplot(aes(block, joy)) + geom_col()
+
+
+# REGULAR EXPRESSIONS
+

@@ -344,3 +344,177 @@ The trajectory of specific sentiments can also be visualized.
 hound_blocks %>% ggplot(aes(block, joy)) + geom_col()
 ```
 
+
+# Regular Expressions
+
+Searching and extracting text can be a complicated problem sometimes. Fortunately it has been solved by computer scientists, and has been adopted by most programming languages, including R. The solution is to use what are called “regular expressions”. Regular expressions may look complicated at a first glance, but are actually quite simple once the rules are understood. The syntax for regular expressions appeared and was standardised in the Perl language, and now nearly all programming languages support “Perl Compatible Regular Expressions” (PCRE).
+
+In R, *str_detect* function is used from the *stringr* and regex is used to pass in regular expressions.
+
+For example, let’s first read Hamlet’s monologue into a tibble.
+
+```{r warning=FALSE}
+lines <- readLines("https://chryswoods.com/text_analysis_r/hamlet.txt")
+text <- tibble(line=1:length(lines), text=lines)
+```
+
+Now *str_detect* can be used to filter out lines that contain specific text, e.g. the text "To" is going to be filtered out.
+
+```{r warning=FALSE}
+text %>% filter(str_detect(text, "To"))
+```
+
+The opposite of this can also be done, i.e. filtering out all of the lines that do not have "To" by negating the search.
+
+```{r warning=FALSE}
+text %>% filter(str_detect(text, "To", negate=TRUE))
+```
+
+At the moment, this is performing a case-sensitive search. *regex* can be used to build a regular expression that searches for To in a case-insensitive way.
+
+```{r warning=FALSE}
+text %>% filter(str_detect(text, regex("To", ignore_case=TRUE)))
+```
+
+Regular expressions can do more than just search for specific text. They can search for patterns of text. For example, what if the search for lines contained the word *the*? Lines where **the** is a part of a word would have to be excluded, such as *their* or *they*. To do this, use ``\\b`` to represent a word boundary (space, newline etc.). Then, search for ``\\bthe\\b`` to search for *word boundary* followed by *the* followed by *word boundary*.
+
+```{r warning=FALSE}
+text %>% filter(str_detect(text, "\\bthe\\b"))
+```
+
+What if the lines to be detected contained *the* as a part of a word? In this case, use ``\\w`` to mean “any letter”, and thus ``the\\w`` would mean *the* followed by any letter.
+
+```{r warning=FALSE}
+text %>% filter(str_detect(text, "the\\w"))
+```
+
+This has picked up whether, rather etc. What if the search contained all words that start with *the*? In this case, combine ``\\b`` and ``\\w`` to search for lines that contain *word boundary* followed by *the* followed by *any letter*.
+
+```{r warning=FALSE}
+text %>% filter(str_detect(text, "\\bthe\\w"))
+```
+
+This has matched *them*, *there's* and *their*.
+
+There are many special characters that can be used. For example:
+
+> ``\\d`` Match any digit (number)
+
+> ``\\s`` Match a space
+
+> ``\\w`` Match any word character (alphanumeric and “_”)
+
+> ``\\S`` Match any non-whitespace character
+
+> ``\\D`` Match any non-digit character
+
+> ``.`` Match any character
+
+> ``\\t`` Match a tab
+
+> ``\\n`` Match a newline
+
+
+
+Instead of using ``\\w`` to mean any letter, it can be used to actually ask to match specific letters. This is done by putting the letters to be matched between square brackets. For example, *[aiy]* would mean match any of *a*, *i* or *y*. Thus *th[aiy]* means match *th* followed by *a*, *i* or *y*.
+
+```{r warning=FALSE}
+text %>% filter(str_detect(text, "th[aiy]"))
+```
+
+Characters that are matched in the square brackets can be controlled using:
+
+> ``[abc]`` Match a, b or c
+
+> ``[a-z]`` Match any character between a to z
+
+> ``[A-Z]`` Match any character between A to Z
+
+> ``[a-zA-Z]`` Match any character from a to z and A to Z (any letter)
+
+> ``[0-9]`` Match any digit
+
+> ``[02468]`` Match any even digit
+
+> ``[^0-9]`` Matches NOT digits (^ means NOT)
+
+Repition can also be used when matching.
+
+> ``*`` Match 0 or more times, e.g. ``\\w*`` means match 0 or more word characters.
+
+> ``+`` Match 1 or more times, e.g. ``\\w+`` means match 1 or more word characters.
+
+> ``?`` Match 0 or 1 times, e.g. ``\\w?`` means match 0 or 1 word characters.
+
+> ``{n}`` Match exactly n times, e.g. ``\\w{3}`` means match exactly 3 word characters.
+
+> ``{n,}`` Match at least n times, e.g. ``\\w{5,}`` means match at least 5 word characters.
+
+> ``{m,n}`` Match between m and n times, e.g. ``\\w{5,7}`` means match 5-7 word characters.
+
+
+
+For example, let's use the above rules to find all lines that contain words with 10-12 characters.
+
+```{r warning=FALSE}
+text %>% filter(str_detect(text, "\\w{10,12}"))
+```
+
+These rules can also be applied to sequence of characters, by putting them in round brackets. This is particularly useful when combined with ``|``, which means “or”. For example,
+
+```{r warning=FALSE}
+text %>% filter(str_detect(text, "(monologue)|(dream)"))
+```
+
+has matched **monologue** or **dream**. Combining this with the modifiers above gives us:
+
+```{r warning=FALSE}
+text %>% filter(str_detect(text, "\\b(T|t)he(re)?\\b"))
+```
+
+which matches a word boundary, followed by ``T`` or ``t``, followed by ``he`` followed by zero or one ``re`` followed by a word boundary. As such, it has matched the words ``The``, ``the``, ``There`` and ``there``.
+
+We can also specify that a match must be made at the beginning of the line using ``^``. This means match at the start of the line. Here we get all of the lines that start with ``The``.
+
+```{r warning=FALSE}
+text %>% filter(str_detect(text, "^The"))
+```
+
+Similarly, use ``$`` to mean match at the end of the line. Here we get all lines that end with ``on``.
+
+```{r warning=FALSE}
+text %>% filter(str_detect(text, "on$"))
+```
+
+
+## Replacing text
+
+As well as searching for text, regular expressions can also be used to replace text. This can be done using *stringrs* *str_replace* or *str_replace_all* functions. Following is the syntax : **str_replace(line, pattern, replace)**
+
+For example, the above syntax will replace the first instance of ``pattern`` in ``line`` with ``replace``.
+```{r warning=FALSE}
+line <- text[4, 2]
+
+str_replace(line, "be", "bandanas")
+```
+
+We can also choose to match the string to replace using a regex, For example : 
+
+```{r warning=FALSE}
+str_replace_all(line, regex("to be", ignore_case=TRUE), "nuts")
+```
+
+we need to use ``mutate`` to apply this change to all rows in a tibble. For example : 
+
+```{r warning=FALSE}
+text %>% mutate(text = str_replace_all(text, "be", "bandanas"))
+```
+
+```{r warning=FALSE}
+text %>% mutate(text = str_replace_all(text, regex("\\bthe\\b", ignore_case=TRUE), "bandanas"))
+```
+
+## Caution
+
+Regular expressions are powerful, as we have seen. They can be used to search for specific output from the project and performs powerful text manipulation. However, they are “write-only”. Extremely difficult to understand for non-experts, and complex regular expressions can be difficult even for seasoned programmers and coders. One good practice is to **ALWAYS** comment the regular expressions and explain in English exactly what the intention was when the expression was written. Once the rules are memorized and understood, regular expressions will not be as complicated to read and understand. However, without comments, they will be completely unintelligible to everyone else who looks at or relies on the provided code.
+
