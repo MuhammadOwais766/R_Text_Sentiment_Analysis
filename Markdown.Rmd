@@ -518,3 +518,78 @@ text %>% mutate(text = str_replace_all(text, regex("\\bthe\\b", ignore_case=TRUE
 
 Regular expressions are powerful, as we have seen. They can be used to search for specific output from the project and performs powerful text manipulation. However, they are “write-only”. Extremely difficult to understand for non-experts, and complex regular expressions can be difficult even for seasoned programmers and coders. One good practice is to **ALWAYS** comment the regular expressions and explain in English exactly what the intention was when the expression was written. Once the rules are memorized and understood, regular expressions will not be as complicated to read and understand. However, without comments, they will be completely unintelligible to everyone else who looks at or relies on the provided code.
 
+
+
+# Word Clouds
+
+Word clouds can be a useful visualisation to quickly view the most used words in a block of text. R has the **wordcloud** function in the **wordcloud** package that can be used to quickly generate these plots.
+
+To use it, first load the package that will be used in this section.
+
+```{r warning=FALSE}
+library(wordcloud)
+```
+
+Now to create word clouds from the tidied text of **Another Adventures of Sherlock Holmes, The Hound of the Baskervilles**. Start by downloading the text and tidying it up, as done in the previous section (Sentiment Analysis).
+
+```{r warning=FALSE}
+hound <- gutenberg_download(2852) %>% 
+    mutate(linenumber=row_number()) %>% 
+    unnest_tokens(word, text) %>% anti_join(stop_words)
+```
+
+We want the size each word in the wordcloud to depend on the number of times it appears. We thus create a tibble of these counts.
+
+```{r warning=FALSE}
+hound_counts <- hound %>% count(word, sort=TRUE)
+```
+
+The wordcloud function is easy to use. Simply pass in a column of words ``(hound_counts$word)`` and a column of their counts ``(hound_counts$n)``. The plot needs to be restricted to only display the common words, otherwise R will end up being overloaded. This is done by only displaying words that appear 25 or more times, using ``min.freq=25``. The random.order argument is set to ``FALSE`` so that the plot is reproducible as much as possible, the option tells R to plot the words in order of decreasing frequency, rather than a random order.
+
+```{r warning=FALSE}
+wordcloud(hound_counts$word, hound_counts$n, min.freq=25, random.order=FALSE)
+```
+
+We can also use ``with`` function to make this part of a pipeline.
+
+```{r warning=FALSE}
+hound_counts %>% with(wordcloud(word, n, min.freq=25, random.order=FALSE))
+```
+
+We can also color the words from highest appearance to least by adding a color palette.
+
+```{r}
+hound_counts %>% with(wordcloud(word, n, min.freq=25, random.order=FALSE, colors=brewer.pal(8, "Dark2")))
+```
+
+All of the available colour palettes are listed here : http://applied-r.com/rcolorbrewer-palettes/
+
+We can also display the ones available in the R installation.
+
+```{r warning=FALSE}
+display.brewer.all()
+```
+
+## Coloring different sentiments
+
+Now to color words according to their sentiment. First recreate the table that has the sentiment counts, using the same procedure as the previous section.
+
+```{r warning=FALSE}
+sentiments <- get_sentiments("nrc")
+hound_sentiments <- hound %>% inner_join(sentiments) %>% count(word, sentiment, sort=TRUE) %>% pivot_wider(names_from=sentiment, values_from=n, values_fill=0)
+```
+
+Now word clouds can be drawn for specific sentiments by picking out specific columns, for example, here are all of the common words associated with “joy”.
+
+```{r warning=FALSE}
+hound_sentiments %>% with(wordcloud(word, joy, min.freq=10, random.color = FALSE, colors = brewer.pal(8, "PuOr")))
+```
+
+And here are the common words associated with “fear”.
+
+```{r warning=FALSE}
+hound_sentiments %>% with(wordcloud(word, fear, min.freq=10, random.color = FALSE, colors = brewer.pal(12, "Paired")))
+```
+
+# n-grams
+
